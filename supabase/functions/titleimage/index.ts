@@ -2,11 +2,56 @@
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
+import { decodeBase64 } from "https://deno.land/std@0.220.1/encoding/base64.ts";
+import { Base64 } from "https://deno.land/x/bb64/mod.ts";
 import handler from "./handler.tsx";
 
 console.log("Hello from Functions!");
 
-Deno.serve(handler);
+Deno.serve(async (req) => {
+  console.log("Method:", req.method);
+
+  const uri = new URL(req.url);
+  console.log("Path:", uri.pathname);
+
+  const url = uri.searchParams.get("url");
+
+  const title = uri.searchParams.get("title");
+  // console.log("Query parameters:", url.searchParams);
+
+  if (!url) {
+    return new Response(
+      JSON.stringify({ error: "url is required" }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  try {
+    const imageurl = new URL(url);
+
+    if (imageurl.protocol !== "http:" && imageurl.protocol !== "https:") {
+      throw new Error("Invalid URL");
+    }
+
+    const blob = await fetch(url).then((res) => res.blob());
+
+    const base648arrya = await blobToBase64(blob);
+
+    const pngImage = Base64.fromUint8Array(base648arrya);
+
+    return handler(req, blob, title!);
+  } catch (error) {
+    console.error(error);
+    return new Response(
+      JSON.stringify({ error: "Invalid URL" }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  }
+});
+
+async function blobToBase64(blob: Blob) {
+  return new Uint8Array(await blob.arrayBuffer());
+}
 
 /* To invoke locally:
 
